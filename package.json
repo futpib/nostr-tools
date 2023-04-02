@@ -1,6 +1,6 @@
 {
   "name": "@futpib/nostr-tools",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "description": "Tools for making a Nostr client.",
   "repository": {
     "type": "git",

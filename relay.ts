@@ -9,9 +9,14 @@ type RelayEvent = {
   disconnect: () => void | Promise<void>
   error: () => void | Promise<void>
   notice: (msg: string) => void | Promise<void>
+  auth: (challenge: string) => void | Promise<void>
+}
+export type CountPayload = {
+  count: number
 }
 type SubEvent = {
   event: (event: Event) => void | Promise<void>
+  count: (payload: CountPayload) => void | Promise<void>
   eose: () => void | Promise<void>
 }
 export type Relay = {
@@ -22,7 +27,12 @@ export type Relay = {
   sub: (filters: Filter[], opts?: SubscriptionOptions) => Sub
   list: (filters: Filter[], opts?: SubscriptionOptions) => Promise<Event[]>
   get: (filter: Filter, opts?: SubscriptionOptions) => Promise<Event | null>
+  count: (
+    filters: Filter[],
+    opts?: SubscriptionOptions
+  ) => Promise<CountPayload | null>
   publish: (event: Event) => Pub
+  auth: (event: Event) => Pub
   off: <T extends keyof RelayEvent, U extends RelayEvent[T]>(
     event: T,
     listener: U
@@ -51,27 +61,32 @@ export type Sub = {
 
 export type SubscriptionOptions = {
   id?: string
+  verb?: 'REQ' | 'COUNT'
   skipVerification?: boolean
   alreadyHaveEvent?: null | ((id: string, relay: string) => boolean)
 }
+
+const newListeners = (): {[TK in keyof RelayEvent]: RelayEvent[TK][]} => ({
+  connect: [],
+  disconnect: [],
+  error: [],
+  notice: [],
+  auth: []
+})
 
 export function relayInit(
   url: string,
   options: {
     getTimeout?: number
     listTimeout?: number
+    countTimeout?: number
   } = {}
 ): Relay {
-  let {listTimeout = 3000, getTimeout = 3000} = options
+  let {listTimeout = 3000, getTimeout = 3000, countTimeout = 3000} = options
 
   var ws: WebSocket
   var openSubs: {[id: string]: {filters: Filter[]} & SubscriptionOptions} = {}
-  var listeners: {[TK in keyof RelayEvent]: RelayEvent[TK][]} = {
-    connect: [],
-    disconnect: [],
-    error: [],
-    notice: []
-  }
+  var listeners = newListeners()
   var subListeners: {
     [subid: string]: {[TK in keyof SubEvent]: SubEvent[TK][]}
   } = {}
@@ -83,8 +98,10 @@ export function relayInit(
     }
   } = {}
 
+  var connectionPromise: Promise<void> | undefined
   async function connectRelay(): Promise<void> {
-    return new Promise((resolve, reject) => {
+    if (connectionPromise) return connectionPromise
+    connectionPromise = new Promise((resolve, reject) => {
       try {
         ws = new WebSocket(url)
       } catch (err) {
@@ -96,10 +113,12 @@ export function relayInit(
         resolve()
       }
       ws.onerror = () => {
+        connectionPromise = undefined
         listeners.error.forEach(cb => cb())
         reject()
       }
       ws.onclose = async () => {
+        connectionPromise = undefined
         listeners.disconnect.forEach(cb => cb())
       }
 
@@ -142,7 +161,7 @@ export function relayInit(
           // will naturally be caught by the encompassing try..catch block
 
           switch (data[0]) {
-            case 'EVENT':
+            case 'EVENT': {
               let id = data[1]
               let event = data[2]
               if (
@@ -153,6 +172,14 @@ export function relayInit(
               ) {
                 openSubs[id]
                 ;(subListeners[id]?.event || []).forEach(cb => cb(event))
+              }
+              return
+            }
+            case 'COUNT':
+              let id = data[1]
+              let payload = data[2]
+              if (openSubs[id]) {
+                ;(subListeners[id]?.count || []).forEach(cb => cb(payload))
               }
               return
             case 'EOSE': {
@@ -179,12 +206,19 @@ export function relayInit(
               let notice = data[1]
               listeners.notice.forEach(cb => cb(notice))
               return
+            case 'AUTH': {
+              let challenge = data[1]
+              listeners.auth?.forEach(cb => cb(challenge))
+              return
+            }
           }
         } catch (err) {
           return
         }
       }
     })
+
+    return connectionPromise
   }
 
   function connected() {
@@ -214,6 +248,7 @@ export function relayInit(
   const sub = (
     filters: Filter[],
     {
+      verb = 'REQ',
       skipVerification = false,
       alreadyHaveEvent = null,
       id = Math.random().toString().slice(2)
@@ -227,7 +262,7 @@ export function relayInit(
       skipVerification,
       alreadyHaveEvent
     }
-    trySend(['REQ', subid, ...filters])
+    trySend([verb, subid, ...filters])
 
     return {
       sub: (newFilters, newOpts = {}) =>
@@ -247,6 +282,7 @@ export function relayInit(
       ): void => {
         subListeners[subid] = subListeners[subid] || {
           event: [],
+          count: [],
           eose: []
         }
         subListeners[subid][type].push(cb)
@@ -256,6 +292,29 @@ export function relayInit(
         cb: U
       ): void => {
         let listeners = subListeners[subid]
+        let idx = listeners[type].indexOf(cb)
+        if (idx >= 0) listeners[type].splice(idx, 1)
+      }
+    }
+  }
+
+  function _publishEvent(event: Event, type: string) {
+    if (!event.id) throw new Error(`event ${event} has no id`)
+    let id = event.id
+
+    trySend([type, event])
+
+    return {
+      on: (type: 'ok' | 'failed', cb: any) => {
+        pubListeners[id] = pubListeners[id] || {
+          ok: [],
+          failed: []
+        }
+        pubListeners[id][type].push(cb)
+      },
+      off: (type: 'ok' | 'failed', cb: any) => {
+        let listeners = pubListeners[id]
+        if (!listeners) return
         let idx = listeners[type].indexOf(cb)
         if (idx >= 0) listeners[type].splice(idx, 1)
       }
@@ -312,31 +371,28 @@ export function relayInit(
           resolve(event)
         })
       }),
-    publish(event: Event): Pub {
-      if (!event.id) throw new Error(`event ${event} has no id`)
-      let id = event.id
-
-      trySend(['EVENT', event])
-
-      return {
-        on: (type: 'ok' | 'failed', cb: any) => {
-          pubListeners[id] = pubListeners[id] || {
-            ok: [],
-            failed: []
-          }
-          pubListeners[id][type].push(cb)
-        },
-        off: (type: 'ok' | 'failed', cb: any) => {
-          let listeners = pubListeners[id]
-          if (!listeners) return
-          let idx = listeners[type].indexOf(cb)
-          if (idx >= 0) listeners[type].splice(idx, 1)
-        }
-      }
+    count: (filters: Filter[]): Promise<CountPayload | null> =>
+      new Promise(resolve => {
+        let s = sub(filters, {...sub, verb: 'COUNT'})
+        let timeout = setTimeout(() => {
+          s.unsub()
+          resolve(null)
+        }, countTimeout)
+        s.on('count', (event: CountPayload) => {
+          s.unsub()
+          clearTimeout(timeout)
+          resolve(event)
+        })
+      }),
+    publish(event): Pub {
+      return _publishEvent(event, 'EVENT')
+    },
+    auth(event): Pub {
+      return _publishEvent(event, 'AUTH')
     },
     connect,
     close(): void {
-      listeners = {connect: [], disconnect: [], error: [], notice: []}
+      listeners = newListeners()
       subListeners = {}
       pubListeners = {}
       if (ws.readyState === WebSocket.OPEN) {

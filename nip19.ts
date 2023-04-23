@@ -23,10 +23,16 @@ export type AddressPointer = {
   relays?: string[]
 }
 
-export function decode(nip19: string): {
-  type: string
-  data: ProfilePointer | EventPointer | AddressPointer | string
-} {
+export type DecodeResult =
+  | {type: 'nprofile'; data: ProfilePointer}
+  | {type: 'nrelay'; data: string}
+  | {type: 'nevent'; data: EventPointer}
+  | {type: 'naddr'; data: AddressPointer}
+  | {type: 'nsec'; data: string}
+  | {type: 'npub'; data: string}
+  | {type: 'note'; data: string}
+
+export function decode(nip19: string): DecodeResult {
   let {prefix, words} = bech32.decode(nip19, Bech32MaxSize)
   let data = new Uint8Array(bech32.fromWords(words))
 
@@ -79,6 +85,16 @@ export function decode(nip19: string): {
           kind: parseInt(secp256k1.utils.bytesToHex(tlv[3][0]), 16),
           relays: tlv[1] ? tlv[1].map(d => utf8Decoder.decode(d)) : []
         }
+      }
+    }
+
+    case 'nrelay': {
+      let tlv = parseTLV(data)
+      if (!tlv[0]?.[0]) throw new Error('missing TLV 0 for nrelay')
+
+      return {
+        type: 'nrelay',
+        data: utf8Decoder.decode(tlv[0][0])
       }
     }
 
@@ -158,6 +174,14 @@ export function naddrEncode(addr: AddressPointer): string {
   })
   let words = bech32.toWords(data)
   return bech32.encode('naddr', words, Bech32MaxSize)
+}
+
+export function nrelayEncode(url: string): string {
+  let data = encodeTLV({
+    0: [utf8Encoder.encode(url)]
+  })
+  let words = bech32.toWords(data)
+  return bech32.encode('nrelay', words, Bech32MaxSize)
 }
 
 function encodeTLV(tlv: TLV): Uint8Array {

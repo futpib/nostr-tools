@@ -1,6 +1,6 @@
 {
   "name": "@futpib/nostr-tools",
-  "version": "1.9.4",
+  "version": "1.10.1",
   "description": "Tools for making a Nostr client.",
   "repository": {
     "type": "git",
@@ -16,14 +16,13 @@
     "import": "./lib/esm/nostr.mjs",
     "require": "./lib/nostr.cjs.js"
   },
-  "license": "Public domain",
+  "license": "Unlicense",
   "dependencies": {
-    "@noble/hashes": "1.0.0",
-    "@noble/secp256k1": "^1.7.1",
-    "@scure/base": "^1.1.1",
-    "@scure/bip32": "^1.1.5",
-    "@scure/bip39": "^1.1.1",
-    "prettier": "^2.8.4"
+    "@noble/hashes": "1.2.0",
+    "@noble/secp256k1": "1.7.1",
+    "@scure/base": "1.1.1",
+    "@scure/bip32": "1.1.4",
+    "@scure/bip39": "1.1.1"
   },
   "keywords": [
     "decentralization",
@@ -32,6 +31,11 @@
     "client",
     "nostr"
   ],
+  "scripts": {
+    "build": "node build",
+    "format": "prettier --plugin-search-dir . --write .",
+    "test": "node build && jest"
+  },
   "devDependencies": {
     "@types/node": "^18.13.0",
     "@typescript-eslint/eslint-plugin": "^5.51.0",
@@ -44,6 +48,7 @@
     "events": "^3.3.0",
     "jest": "^29.4.2",
     "node-fetch": "^2.6.9",
+    "prettier": "^2.8.4",
     "ts-jest": "^29.0.5",
     "tsd": "^0.22.0",
     "typescript": "^4.9.5",

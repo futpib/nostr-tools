@@ -13,6 +13,7 @@ export enum Kind {
   EncryptedDirectMessage = 4,
   EventDeletion = 5,
   Reaction = 7,
+  BadgeAward = 8,
   ChannelCreation = 40,
   ChannelMetadata = 41,
   ChannelMessage = 42,
@@ -23,6 +24,8 @@ export enum Kind {
   Zap = 9735,
   RelayList = 10002,
   ClientAuth = 22242,
+  BadgeDefinition = 30008,
+  ProfileBadge = 30009,
   Article = 30023
 }
 
@@ -78,8 +81,10 @@ export function getEventHash(event: UnsignedEvent): string {
   return secp256k1.utils.bytesToHex(eventHash)
 }
 
-export function validateEvent(event: UnsignedEvent): boolean {
-  if (typeof event !== 'object') return false
+const isRecord = (obj: unknown): obj is Record<string, unknown> => obj instanceof Object
+
+export function validateEvent<T>(event: T): event is T & UnsignedEvent {
+  if (!isRecord(event)) return false
   if (typeof event.kind !== 'number') return false
   if (typeof event.content !== 'string') return false
   if (typeof event.created_at !== 'number') return false
@@ -98,7 +103,7 @@ export function validateEvent(event: UnsignedEvent): boolean {
   return true
 }
 
-export function verifySignature(event: Event & {sig: string}): boolean {
+export function verifySignature(event: Event): boolean {
   return secp256k1.schnorr.verifySync(
     event.sig,
     getEventHash(event),

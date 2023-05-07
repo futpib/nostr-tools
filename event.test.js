@@ -5,7 +5,7 @@ const {
   getEventHash,
   validateEvent,
   verifySignature,
-  signEvent,
+  getSignature,
   getPublicKey,
   Kind
 } = require('./lib/nostr.cjs')
@@ -15,6 +15,15 @@ describe('Event', () => {
     it('should return a blank event object', () => {
       expect(getBlankEvent()).toEqual({
         kind: 255,
+        content: '',
+        tags: [],
+        created_at: 0
+      })
+    })
+
+    it('should return a blank event object with defined kind', () => {
+      expect(getBlankEvent(Kind.Text)).toEqual({
+        kind: 1,
         content: '',
         tags: [],
         created_at: 0
@@ -281,8 +290,8 @@ describe('Event', () => {
     })
   })
 
-  describe('signEvent', () => {
-    it('should sign an event object', () => {
+  describe('getSignature', () => {
+    it('should produce the correct signature for an event object', () => {
       const privateKey =
         'd217c1ff2f8a65c3e3a1740db3b9f58b8c848bb45e26d00ed4714e4a0f4ceecf'
       const publicKey = getPublicKey(privateKey)
@@ -295,7 +304,7 @@ describe('Event', () => {
         pubkey: publicKey
       }
 
-      const sig = signEvent(unsignedEvent, privateKey)
+      const sig = getSignature(unsignedEvent, privateKey)
 
       // verify the signature
       const isValid = verifySignature({
@@ -324,7 +333,7 @@ describe('Event', () => {
         pubkey: publicKey
       }
 
-      const sig = signEvent(unsignedEvent, wrongPrivateKey)
+      const sig = getSignature(unsignedEvent, wrongPrivateKey)
 
       // verify the signature
       const isValid = verifySignature({

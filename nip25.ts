@@ -17,9 +17,9 @@ export type ReactionEventTemplate = {
 
 export function finishReactionEvent(
   t: ReactionEventTemplate,
-  reacted: Event,
+  reacted: Event<number>,
   privateKey: string,
-): Event {
+): Event<Kind.Reaction> {
   const inheritedTags = reacted.tags.filter(
     (tag) => tag.length >= 2 && (tag[0] === 'e' || tag[0] === 'p'),
   )
@@ -37,7 +37,7 @@ export function finishReactionEvent(
   }, privateKey)
 }
 
-export function getReactedEventPointer(event: Event): undefined | EventPointer {
+export function getReactedEventPointer(event: Event<number>): undefined | EventPointer {
   if (event.kind !== Kind.Reaction) {
     return undefined
   }
@@ -45,11 +45,12 @@ export function getReactedEventPointer(event: Event): undefined | EventPointer {
   let lastETag: undefined | string[]
   let lastPTag: undefined | string[]
 
-  for (const tag of event.tags) {
+  for (let i = event.tags.length - 1; i >= 0 && (lastETag === undefined || lastPTag === undefined); i--) {
+    const tag = event.tags[i]
     if (tag.length >= 2) {
-      if (tag[0] === 'e') {
+      if (tag[0] === 'e' && lastETag === undefined) {
         lastETag = tag
-      } else if (tag[0] === 'p') {
+      } else if (tag[0] === 'p' && lastPTag === undefined) {
         lastPTag = tag
       }
     }

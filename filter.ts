@@ -1,8 +1,8 @@
-import {Event} from './event'
+import {Event, type Kind} from './event'
 
-export type Filter = {
+export type Filter<K extends number = Kind> = {
   ids?: string[]
-  kinds?: number[]
+  kinds?: K[]
   authors?: string[]
   since?: number
   until?: number
@@ -12,8 +12,8 @@ export type Filter = {
 }
 
 export function matchFilter(
-  filter: Filter,
-  event: Event
+  filter: Filter<number>,
+  event: Event<number>
 ): boolean {
   if (filter.ids && filter.ids.indexOf(event.id) === -1) {
     if (!filter.ids.some(prefix => event.id.startsWith(prefix))) {
@@ -48,8 +48,8 @@ export function matchFilter(
 }
 
 export function matchFilters(
-  filters: Filter[],
-  event: Event
+  filters: Filter<number>[],
+  event: Event<number>
 ): boolean {
   for (let i = 0; i < filters.length; i++) {
     if (matchFilter(filters[i], event)) return true

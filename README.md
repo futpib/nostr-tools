@@ -27,7 +27,7 @@ let pk = getPublicKey(sk) // `pk` is a hex string
 import {
   validateEvent,
   verifySignature,
-  signEvent,
+  getSignature,
   getEventHash,
   getPublicKey
 } from 'nostr-tools'
@@ -41,7 +41,7 @@ let event = {
 }
 
 event.id = getEventHash(event)
-event.sig = signEvent(event, privateKey)
+event.sig = getSignature(event, privateKey)
 
 let ok = validateEvent(event)
 let veryOk = verifySignature(event)
@@ -55,7 +55,7 @@ import {
   generatePrivateKey,
   getPublicKey,
   getEventHash,
-  signEvent
+  getSignature
 } from 'nostr-tools'
 
 const relay = relayInit('wss://relay.example.com')
@@ -104,7 +104,7 @@ let event = {
   content: 'hello world'
 }
 event.id = getEventHash(event)
-event.sig = signEvent(event, sk)
+event.sig = getSignature(event, sk)
 
 let pub = relay.publish(event)
 pub.on('ok', () => {
@@ -266,7 +266,7 @@ sendEvent(event)
 
 // on the receiver side
 sub.on('event', event => {
-  let sender = event.tags.find(([k, v]) => k === 'p' && v && v !== '')[1]
+  let sender = event.pubkey
   pk1 === sender
   let plaintext = await nip04.decrypt(sk2, pk1, event.content)
 })

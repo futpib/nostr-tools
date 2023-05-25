@@ -1,10 +1,10 @@
-/* eslint-env jest */
-
-const {nip26, getPublicKey, generatePrivateKey} = require('./lib/nostr.cjs')
+import {getPublicKey, generatePrivateKey} from './keys.ts'
+import {getDelegator, createDelegation} from './nip26.ts'
+import {buildEvent} from './test-helpers.ts'
 
 test('parse good delegation from NIP', async () => {
   expect(
-    nip26.getDelegator({
+    getDelegator({
       id: 'a080fd288b60ac2225ff2e2d815291bd730911e583e177302cc949a15dc2b2dc',
       pubkey:
         '62903b1ff41559daf9ee98ef1ae67cc52f301bb5ce26d14baba3052f649c3f49',
@@ -26,7 +26,7 @@ test('parse good delegation from NIP', async () => {
 
 test('parse bad delegations', async () => {
   expect(
-    nip26.getDelegator({
+    getDelegator({
       id: 'a080fd288b60ac2225ff2e2d815291bd730911e583e177302cc949a15dc2b2dc',
       pubkey:
         '62903b1ff41559daf9ee98ef1ae67cc52f301bb5ce26d14baba3052f649c3f49',
@@ -46,7 +46,7 @@ test('parse bad delegations', async () => {
   ).toEqual(null)
 
   expect(
-    nip26.getDelegator({
+    getDelegator({
       id: 'a080fd288b60ac2225ff2e2d815291bd730911e583e177302cc949a15dc2b2dc',
       pubkey:
         '62903b1ff41559daf9ee98ef1ae67cc52f301bb5ce26d14baba3052f649c3f49',
@@ -66,7 +66,7 @@ test('parse bad delegations', async () => {
   ).toEqual(null)
 
   expect(
-    nip26.getDelegator({
+    getDelegator({
       id: 'a080fd288b60ac2225ff2e2d815291bd730911e583e177302cc949a15dc2b2dc',
       pubkey:
         '62903b1ff41559daf9ee98ef1ae67c152f301bb5ce26d14baba3052f649c3f49',
@@ -91,15 +91,15 @@ test('create and verify delegation', async () => {
   let pk1 = getPublicKey(sk1)
   let sk2 = generatePrivateKey()
   let pk2 = getPublicKey(sk2)
-  let delegation = nip26.createDelegation(sk1, {pubkey: pk2, kind: 1})
+  let delegation = createDelegation(sk1, {pubkey: pk2, kind: 1})
   expect(delegation).toHaveProperty('from', pk1)
   expect(delegation).toHaveProperty('to', pk2)
   expect(delegation).toHaveProperty('cond', 'kind=1')
 
-  let event = {
+  let event = buildEvent({
     kind: 1,
     tags: [['delegation', delegation.from, delegation.cond, delegation.sig]],
-    pubkey: pk2
-  }
-  expect(nip26.getDelegator(event)).toEqual(pk1)
+    pubkey: pk2,
+  })
+  expect(getDelegator(event)).toEqual(pk1)
 })

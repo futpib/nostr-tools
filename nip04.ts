@@ -1,8 +1,8 @@
 import {randomBytes} from '@noble/hashes/utils'
-import * as secp256k1 from '@noble/secp256k1'
+import {secp256k1} from '@noble/curves/secp256k1'
 import {base64} from '@scure/base'
 
-import {utf8Decoder, utf8Encoder} from './utils'
+import {utf8Decoder, utf8Encoder} from './utils.ts'
 
 // @ts-ignore
 if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {

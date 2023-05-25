@@ -1,6 +1,4 @@
-/* eslint-env jest */
-
-const {nip10} = require('./lib/nostr.cjs')
+import {parse} from './nip10.ts'
 
 describe('parse NIP10-referenced events', () => {
   test('legacy + a lot of events', () => {
@@ -49,7 +47,7 @@ describe('parse NIP10-referenced events', () => {
       ]
     }
 
-    expect(nip10.parse(event)).toEqual({
+    expect(parse(event)).toEqual({
       mentions: [
         {
           id: 'bbd72f0ae14374aa8fb166b483cfcf99b57d7f4cf1600ccbf17c350040834631',
@@ -130,7 +128,7 @@ describe('parse NIP10-referenced events', () => {
       ]
     }
 
-    expect(nip10.parse(event)).toEqual({
+    expect(parse(event)).toEqual({
       mentions: [
         {
           id: 'bbd72f0ae14374aa8fb166b483cfcf99b57d7f4cf1600ccbf17c350040834631',
@@ -191,7 +189,7 @@ describe('parse NIP10-referenced events', () => {
       ]
     }
 
-    expect(nip10.parse(event)).toEqual({
+    expect(parse(event)).toEqual({
       mentions: [],
       profiles: [
         {
@@ -235,7 +233,7 @@ describe('parse NIP10-referenced events', () => {
       ]
     }
 
-    expect(nip10.parse(event)).toEqual({
+    expect(parse(event)).toEqual({
       mentions: [],
       profiles: [
         {
@@ -304,7 +302,7 @@ describe('parse NIP10-referenced events', () => {
       ]
     }
 
-    expect(nip10.parse(event)).toEqual({
+    expect(parse(event)).toEqual({
       mentions: [],
       profiles: [
         {

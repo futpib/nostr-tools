@@ -1,13 +1,8 @@
-/* eslint-env jest */
+import 'websocket-polyfill'
 
-require('websocket-polyfill')
-const {
-  SimplePool,
-  generatePrivateKey,
-  getPublicKey,
-  getEventHash,
-  getSignature
-} = require('./lib/nostr.cjs')
+import {finishEvent, type Event} from './event.ts'
+import {generatePrivateKey, getPublicKey} from './keys.ts'
+import {SimplePool} from './pool.ts'
 
 let pool = new SimplePool()
 
@@ -33,7 +28,7 @@ test('removing duplicates when querying', async () => {
   let pub = getPublicKey(priv)
 
   let sub = pool.sub(relays, [{authors: [pub]}])
-  let received = []
+  let received: Event[] = []
 
   sub.on('event', event => {
     // this should be called only once even though we're listening
@@ -42,15 +37,12 @@ test('removing duplicates when querying', async () => {
     received.push(event)
   })
 
-  let event = {
-    pubkey: pub,
+  let event = finishEvent({
     created_at: Math.round(Date.now() / 1000),
     content: 'test',
     kind: 22345,
     tags: []
-  }
-  event.id = getEventHash(event)
-  event.sig = getSignature(event, priv)
+  }, priv)
 
   pool.publish(relays, event)
 
@@ -66,7 +58,7 @@ test('same with double querying', async () => {
   let sub1 = pool.sub(relays, [{authors: [pub]}])
   let sub2 = pool.sub(relays, [{authors: [pub]}])
 
-  let received = []
+  let received: Event[] = []
 
   sub1.on('event', event => {
     received.push(event)
@@ -76,15 +68,12 @@ test('same with double querying', async () => {
     received.push(event)
   })
 
-  let event = {
-    pubkey: pub,
+  let event = finishEvent({
     created_at: Math.round(Date.now() / 1000),
     content: 'test2',
     kind: 22346,
     tags: []
-  }
-  event.id = getEventHash(event)
-  event.sig = getSignature(event, priv)
+  }, priv)
 
   pool.publish(relays, event)
 
@@ -122,6 +111,7 @@ test('list()', async () => {
   expect(events.length).toEqual(
     events
       .map(evt => evt.id)
+      // @ts-ignore ???
       .reduce((acc, n) => (acc.indexOf(n) !== -1 ? acc : [...acc, n]), [])
       .length
   )
